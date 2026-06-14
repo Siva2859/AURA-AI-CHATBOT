@@ -1,0 +1,9 @@
+streamlit
+google-genai
+sqlmodel
+chromadb
+beautifulsoup4
+requests
+streamlit-mic-recorder
+PyPDF2
+Pillow
