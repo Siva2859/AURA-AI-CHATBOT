@@ -6,165 +6,209 @@ from ai_agent import generate_response
 from utils import extract_file_data
 
 # ----------------------------------------------------
-# 1. UI SETUP & PROFESSIONAL THEMING (CSS)
+# 1. UI SETUP & ADVANCED PREMIUM THEMING (CSS)
 # ----------------------------------------------------
-st.set_page_config(page_title="AURA | AI Workstation", page_icon="✨", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="AURA | Premium AI Workstation", page_icon="✨", layout="wide", initial_sidebar_state="expanded")
 
-# Custom CSS to fix input tracking, bubble sizes, and professional alignment
+# Inject premium custom CSS for ultra-clean layouts, WhatsApp bubbles, and custom inputs
 st.markdown("""
     <style>
     footer {visibility: hidden;}
-    [data-testid="stSidebar"] {background-color: #1E293B; border-right: 1px solid #334155;}
+    [data-testid="stSidebar"] {background-color: #0F172A; border-right: 1px solid #1E293B;}
     
     /* Center welcome screen styling */
-    .welcome-container {display: flex; flex-direction: column; align-items: center; justify-content: center; height: 40vh; text-align: center; color: #94A3B8;}
-    .welcome-title {font-size: 2.5rem; font-weight: 700; color: #00D2FF; margin-bottom: 10px;}
-    .welcome-subtitle {font-size: 1.1rem; color: #94A3B8;}
+    .welcome-container {display: flex; flex-direction: column; align-items: center; justify-content: center; height: 35vh; text-align: center; color: #94A3B8;}
+    .welcome-title {font-size: 2.8rem; font-weight: 800; color: #00D2FF; margin-bottom: 10px; letter-spacing: -0.5px;}
+    .welcome-subtitle {font-size: 1.1rem; color: #64748B;}
     
-    /* Make chat inputs and options clean and linearly aligned */
-    div[data-testid="stHorizontalBlock"] {
-        align-items: center !important;
+    /* WhatsApp-style Professional Chat Bubbles */
+    .chat-bubble-user {
+        background-color: #1E293B; 
+        color: #F8FAFC; 
+        padding: 14px 18px; 
+        border-radius: 18px 18px 2px 18px; 
+        margin-bottom: 12px; 
+        max-width: 75%; 
+        float: right;
+        clear: both;
+        border: 1px solid #334155;
+    }
+    .chat-bubble-model {
+        background-color: #0284C7; 
+        color: #FFFFFF; 
+        padding: 14px 18px; 
+        border-radius: 18px 18px 18px 2px; 
+        margin-bottom: 12px; 
+        max-width: 75%; 
+        float: left;
+        clear: both;
+    }
+    .chat-container {
+        width: 100%;
+        overflow: auto;
     }
     
-    /* Ensure markdown and text blocks match a consistent font layout */
-    .stChatMessage {
-        border-radius: 12px;
-        padding: 12px;
-        margin-bottom: 10px;
-        max-width: 85%;
+    /* Tighten gap between multi-line input tools */
+    div[data-testid="stForm"] {
+        border: 1px solid #334155 !important;
+        background-color: #1E293B !important;
+        border-radius: 16px !important;
+        padding: 10px !important;
+    }
+    
+    /* Custom spacing for question management row */
+    .edit-hint {
+        font-size: 0.8rem;
+        color: #64748B;
+        margin-top: -8px;
+        margin-bottom: 12px;
     }
     </style>
 """, unsafe_allow_html=True)
 
+# Initialize Session Triggers
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
+if "input_buffer" not in st.session_state:
+    st.session_state.input_buffer = ""
 
 history = db.get_chat_history(st.session_state.session_id)
 
 # ----------------------------------------------------
-# 2. SIDEBAR WORKSPACE & SETTINGS
+# 2. SIDEBAR: CHAT INTERACTION & MANAGEMENT HUB
 # ----------------------------------------------------
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #00D2FF;'>✨ AURA AI</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #00D2FF; margin-bottom: 20px;'>✨ AURA WORKSPACE</h2>", unsafe_allow_html=True)
     
-    if st.button("➕ New Workspace Session", use_container_width=True, type="primary"):
+    if st.button("➕ Open New Conversation", use_container_width=True, type="primary"):
         st.session_state.session_id = str(uuid.uuid4())
+        st.session_state.input_buffer = ""
         st.rerun()
         
-    st.markdown("### 🕒 Recent Sessions")
+    st.markdown("### 🕒 Recent Chats")
     recent_sessions = db.get_all_sessions()
     
-    with st.container(height=200, border=False):
+    with st.container(height=280, border=False):
         if not recent_sessions:
-            st.caption("No active histories recorded.")
+            st.caption("No recent chat entries recorded.")
         else:
-            for s in recent_sessions[:10]: 
+            for idx, s in enumerate(recent_sessions[:12]): 
                 is_active = (s["session_id"] == st.session_state.session_id)
-                btn_type = "primary" if is_active else "secondary"
                 
-                if st.button(f"💬 {s['title']}", key=s["session_id"], use_container_width=True, type=btn_type):
-                    st.session_state.session_id = s["session_id"]
-                    st.rerun()
+                # Expandable item layout for separate quick actions (Share, Download, Delete)
+                with st.expander(f"{'🔷 ' if is_active else '💬 '} {s['title']}", expanded=is_active):
+                    # Switch to this session
+                    if not is_active:
+                        if st.button("👁️ View Chat", key=f"view_{s['session_id']}_{idx}", use_container_width=True):
+                            st.session_state.session_id = s["session_id"]
+                            st.session_state.input_buffer = ""
+                            st.rerun()
+                    
+                    # Action Buttons inside the specific active item
+                    action_history = db.get_chat_history(s["session_id"])
+                    share_text = f"--- AURA DATA CHAT STREAM: {s['title']} ---\n\n"
+                    for m in action_history:
+                        share_text += f"[{m.role.upper()}]: {m.content}\n\n"
+                    
+                    col_sh, col_dl, col_del = st.columns(3)
+                    with col_sh:
+                        st.download_button("🔗 Share", data=share_text, file_name=f"aura_share_{s['session_id']}.txt", mime="text/plain", key=f"sh_{s['session_id']}_{idx}")
+                    with col_dl:
+                        st.download_button("📥 Save", data=share_text, file_name=f"aura_download_{s['session_id']}.txt", mime="text/plain", key=f"dl_{s['session_id']}_{idx}")
+                    with col_del:
+                        if st.button("🗑️ Clear", key=f"del_{s['session_id']}_{idx}", use_container_width=True):
+                            db.delete_session(s["session_id"])
+                            if s["session_id"] == st.session_state.session_id:
+                                st.session_state.session_id = str(uuid.uuid4())
+                            st.rerun()
 
     st.markdown("---")
-    st.markdown("### ⚙️ System Configuration")
-    app_mode = st.selectbox("Operation Mode", ["💬 Standard Chat", "📄 Ask Documents", "🎨 Generate Image"])
+    st.markdown("### ⚙️ Engine Configurations")
+    app_mode = st.selectbox("Operation Matrix", ["💬 Standard Chat", "📄 Ask Documents", "🎨 Generate Image"])
     
     with st.expander("🧠 Generation Hyperparameters"):
         persona = st.selectbox("AI Agent Persona", ["Helpful Assistant", "Expert Programmer", "Creative Writer", "Harsh Code Reviewer", "Sarcastic Robot"])
         temp = st.slider("Temperature (Creativity)", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
         top_k = st.slider("Top-K (Vocabulary Filter)", min_value=1, max_value=100, value=40, step=1)
-        
-    with st.expander("📁 RAG Knowledge Base"):
-        doc_name = st.text_input("Document Label", placeholder="e.g., Technical Specification")
-        new_doc = st.text_area("Source Text Data", height=120)
-        if st.button("Index into Database", use_container_width=True) and new_doc and doc_name:
-            db.add_document_to_rag(new_doc, doc_name)
-            st.success(f"Successfully Indexed: {doc_name}")
-
-    st.markdown("---")
-    
-    # SHARE AND MANAGEMENT UTILITIES
-    if history:
-        # Construct shareable history text
-        shareable_text = f"--- AURA AI SYSTEM CHAT LOG ({st.session_state.session_id}) ---\n\n"
-        for msg in history:
-            shareable_text += f"[{msg.role.upper()}]: {msg.content}\n\n"
-            
-        st.download_button(
-            label="🔗 Share & Export Chat Log",
-            data=shareable_text,
-            file_name=f"aura_shareable_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
-        
-        if st.button("🗑️ Purge Current Session", use_container_width=True, type="secondary"):
-            db.delete_session(st.session_state.session_id)
-            st.session_state.session_id = str(uuid.uuid4()) 
-            st.rerun() 
 
 # ----------------------------------------------------
-# 3. MAIN CONVERSATIONAL CANVAS
+# 3. MAIN INTERACTION CANVAS (WHATSAPP LAYOUT)
 # ----------------------------------------------------
 if not history:
     st.markdown("""
         <div class="welcome-container">
-            <div class="welcome-title">AURA Intelligence System</div>
-            <div class="welcome-subtitle">Select a mode from the sidebar configurations to begin multi-modal generation.</div>
+            <div class="welcome-title">AURA Intelligence Platform</div>
+            <div class="welcome-subtitle">Your customizable multi-modal agent workspace. Type your prompt below to initialize.</div>
         </div>
     """, unsafe_allow_html=True)
 else:
-    for msg in history:
-        with st.chat_message(msg.role):
-            st.markdown(msg.content)
-            if msg.role == "model" and msg.mode_used == "Ask Documents":
-                st.caption("🔍 *Context grounded from RAG Matrix Database*")
+    # Render messages inside structured containers to allow clear edit injection options
+    for index, msg in enumerate(history):
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        if msg.role == "user":
+            st.markdown(f'<div class="chat-bubble-user">{msg.content}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Question editing line below the user prompt
+            if st.button(f"✏️ Edit this Question", key=f"edit_trigger_{index}"):
+                # Clean up metadata prefixes if present from previous attachments
+                clean_prompt = msg.content.split("\n\n*(Attached Asset:")[0]
+                st.session_state.input_buffer = clean_prompt
+                st.toast("✏️ Question pulled back down into the input area for editing!")
+                st.rerun()
+        else:
+            st.markdown(f'<div class="chat-bubble-model">{msg.content}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            if msg.mode_used == "Ask Documents":
+                st.caption("🔍 *Grounded from Chroma Vector Storage Data Matrix*")
+
+st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 4. BALANCED BOTTOM INPUT PLATFORM
+# 4. CUSTOM AUTO-EXPANDING BAR WITH '+' POPOVER
 # ----------------------------------------------------
-st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
-
-# Align options and entry boxes into a clean layout block
-input_col, select_col = st.columns([4.5, 1.5])
-
-with select_col:
-    upload_choice = st.selectbox(
-        "Upload Engine", 
-        ["No Attachment", "Upload Image", "Upload PDF Document"],
-        label_visibility="collapsed"
-    )
-
-with input_col:
-    user_input = st.chat_input("Enter your prompt or context criteria here...")
-
-# Attachment processing
-uploaded_file = None
-if upload_choice != "No Attachment":
-    uploaded_file = st.file_uploader("Attach verification criteria file:", label_visibility="collapsed")
-    if uploaded_file:
-        st.toast(f"📎 Attached file successfully: {uploaded_file.name}")
+# Using a Streamlit Form to tightly control execution layout elements
+with st.form(key="input_form", clear_on_submit=True):
+    col_plus, col_text, col_sub = st.columns([1, 7, 1.5])
+    
+    with col_plus:
+        # The exact requested '+' action layout popover menu
+        plus_menu = st.popover("➕", use_container_width=True)
+        with plus_menu:
+            st.markdown("##### 📎 Attachment Hub")
+            upload_choice = st.radio("Asset Type", ["Text Query Only", "Upload Image (PNG/JPG)", "Upload PDF Document"])
+            uploaded_file = st.file_uploader("Choose validation asset file:", label_visibility="collapsed")
+            
+    with col_text:
+        # Custom input area that handles multiline inputs seamlessly and grows based on contents
+        user_query = st.text_area(
+            "Enter Prompt Here",
+            value=st.session_state.input_buffer,
+            height=65,
+            placeholder="Ask anything or modify your question context...",
+            label_visibility="collapsed"
+        )
+        
+    with col_sub:
+        submit_action = st.form_submit_button("Send 🚀", use_container_width=True)
 
 # ----------------------------------------------------
-# 5. PIPELINE INFERENCE PROCESSING
+# 5. PIPELINE INFERENCE EXECUTION
 # ----------------------------------------------------
-if user_input:
-    with st.chat_message("user"):
-        st.markdown(user_input)
-        if uploaded_file and uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
-            st.image(uploaded_file, width=250)
-        elif uploaded_file:
-            st.caption(f"📁 Linked Asset: {uploaded_file.name}")
-
-    save_text_representation = user_input + (f"\n\n*(Attached Asset: {uploaded_file.name})*" if uploaded_file else "")
+if submit_action and user_query:
+    # Clear out the scratchpad buffer state
+    st.session_state.input_buffer = ""
+    
+    # Save the input turn to the database log
+    save_text_representation = user_query + (f"\n\n*(Attached Asset: {uploaded_file.name})*" if (upload_choice != "Text Query Only" and uploaded_file) else "")
     db.save_chat_turn(st.session_state.session_id, "user", save_text_representation, app_mode)
 
+    # Process and display the dynamic response stream
     with st.chat_message("model"):
-        extracted_file = extract_file_data(uploaded_file)
+        extracted_file = extract_file_data(uploaded_file) if (upload_choice != "Text Query Only") else None
         
         output, sources = generate_response(
-            user_input=user_input, 
+            user_input=user_query, 
             app_mode=app_mode, 
             extracted_file=extracted_file, 
             audio_bytes=None, 
@@ -182,7 +226,6 @@ if user_input:
         
         if sources:
             source_string = ", ".join(sources)
-            st.info(f"📑 Citing Sources: {source_string}")
             final_reply += f"\n\n*Sources: {source_string}*"
             
         db.save_chat_turn(st.session_state.session_id, "model", final_reply, app_mode)
