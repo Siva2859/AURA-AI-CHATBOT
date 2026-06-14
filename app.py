@@ -5,12 +5,8 @@ import database as db
 from ai_agent import generate_response
 from utils import extract_file_data
 
-# ----------------------------------------------------
-# 1. UI SETUP & ADVANCED PREMIUM THEMING (CSS)
-# ----------------------------------------------------
 st.set_page_config(page_title="AURA | Premium AI Workstation", page_icon="✨", layout="wide", initial_sidebar_state="expanded")
 
-# Inject premium custom CSS for ultra-clean layouts, WhatsApp bubbles, and custom inputs
 st.markdown("""
     <style>
     footer {visibility: hidden;}
@@ -66,7 +62,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize Session Triggers
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "input_buffer" not in st.session_state:
@@ -74,9 +69,6 @@ if "input_buffer" not in st.session_state:
 
 history = db.get_chat_history(st.session_state.session_id)
 
-# ----------------------------------------------------
-# 2. SIDEBAR: CHAT INTERACTION & MANAGEMENT HUB
-# ----------------------------------------------------
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: #00D2FF; margin-bottom: 20px;'>✨ AURA WORKSPACE</h2>", unsafe_allow_html=True)
     
@@ -95,16 +87,14 @@ with st.sidebar:
             for idx, s in enumerate(recent_sessions[:12]): 
                 is_active = (s["session_id"] == st.session_state.session_id)
                 
-                # Expandable item layout for separate quick actions (Share, Download, Delete)
                 with st.expander(f"{'🔷 ' if is_active else '💬 '} {s['title']}", expanded=is_active):
-                    # Switch to this session
+                    
                     if not is_active:
                         if st.button("👁️ View Chat", key=f"view_{s['session_id']}_{idx}", use_container_width=True):
                             st.session_state.session_id = s["session_id"]
                             st.session_state.input_buffer = ""
                             st.rerun()
                     
-                    # Action Buttons inside the specific active item
                     action_history = db.get_chat_history(s["session_id"])
                     share_text = f"--- AURA DATA CHAT STREAM: {s['title']} ---\n\n"
                     for m in action_history:
@@ -130,10 +120,7 @@ with st.sidebar:
         persona = st.selectbox("AI Agent Persona", ["Helpful Assistant", "Expert Programmer", "Creative Writer", "Harsh Code Reviewer", "Sarcastic Robot"])
         temp = st.slider("Temperature (Creativity)", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
         top_k = st.slider("Top-K (Vocabulary Filter)", min_value=1, max_value=100, value=40, step=1)
-
-# ----------------------------------------------------
-# 3. MAIN INTERACTION CANVAS (WHATSAPP LAYOUT)
-# ----------------------------------------------------
+ 
 if not history:
     st.markdown("""
         <div class="welcome-container">
@@ -142,16 +129,15 @@ if not history:
         </div>
     """, unsafe_allow_html=True)
 else:
-    # Render messages inside structured containers to allow clear edit injection options
+    
     for index, msg in enumerate(history):
         st.markdown('<div class="chat-container">', unsafe_allow_html=True)
         if msg.role == "user":
             st.markdown(f'<div class="chat-bubble-user">{msg.content}</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # Question editing line below the user prompt
             if st.button(f"✏️ Edit this Question", key=f"edit_trigger_{index}"):
-                # Clean up metadata prefixes if present from previous attachments
+            
                 clean_prompt = msg.content.split("\n\n*(Attached Asset:")[0]
                 st.session_state.input_buffer = clean_prompt
                 st.toast("✏️ Question pulled back down into the input area for editing!")
@@ -164,15 +150,11 @@ else:
 
 st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
 
-# ----------------------------------------------------
-# 4. CUSTOM AUTO-EXPANDING BAR WITH '+' POPOVER
-# ----------------------------------------------------
-# Using a Streamlit Form to tightly control execution layout elements
 with st.form(key="input_form", clear_on_submit=True):
     col_plus, col_text, col_sub = st.columns([1, 7, 1.5])
     
     with col_plus:
-        # The exact requested '+' action layout popover menu
+    
         plus_menu = st.popover("➕", use_container_width=True)
         with plus_menu:
             st.markdown("##### 📎 Attachment Hub")
@@ -180,7 +162,7 @@ with st.form(key="input_form", clear_on_submit=True):
             uploaded_file = st.file_uploader("Choose validation asset file:", label_visibility="collapsed")
             
     with col_text:
-        # Custom input area that handles multiline inputs seamlessly and grows based on contents
+        
         user_query = st.text_area(
             "Enter Prompt Here",
             value=st.session_state.input_buffer,
@@ -191,19 +173,14 @@ with st.form(key="input_form", clear_on_submit=True):
         
     with col_sub:
         submit_action = st.form_submit_button("Send 🚀", use_container_width=True)
-
-# ----------------------------------------------------
-# 5. PIPELINE INFERENCE EXECUTION
-# ----------------------------------------------------
+ 
 if submit_action and user_query:
-    # Clear out the scratchpad buffer state
+    
     st.session_state.input_buffer = ""
     
-    # Save the input turn to the database log
     save_text_representation = user_query + (f"\n\n*(Attached Asset: {uploaded_file.name})*" if (upload_choice != "Text Query Only" and uploaded_file) else "")
     db.save_chat_turn(st.session_state.session_id, "user", save_text_representation, app_mode)
 
-    # Process and display the dynamic response stream
     with st.chat_message("model"):
         extracted_file = extract_file_data(uploaded_file) if (upload_choice != "Text Query Only") else None
         
