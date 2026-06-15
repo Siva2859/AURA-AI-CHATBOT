@@ -44,6 +44,7 @@ def generate_response(user_input, app_mode, extracted_file, audio_bytes, temp, t
         current_time = datetime.now().strftime("%A, %B %d, %Y - %I:%M %p")
         sys_prompt = f"You are acting as a {persona}. Current system time: {current_time}. Match your character accurately, be professional, and structure text cleanly."
         
+        # Temp and Top-K dynamically passed from the UI
         config = types.GenerateContentConfig(
             temperature=temp, 
             top_k=top_k, 
