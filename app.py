@@ -10,22 +10,17 @@ from utils import extract_file_data
 # ----------------------------------------------------
 st.set_page_config(page_title="AURA | Intelligence Station", page_icon="✨", layout="wide", initial_sidebar_state="expanded")
 
-# Ultra-modern minimalist styling matching premium AI platforms
 st.markdown("""
     <style>
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Clean Dark Dashboard Background */
     .stApp {background-color: #0B0F19;}
     [data-testid="stSidebar"] {background-color: #0F172A; border-right: 1px solid #1E293B;}
     
-    /* Center welcome screen styling */
-    .welcome-container {display: flex; flex-direction: column; align-items: center; justify-content: center; height: 35vh; text-align: center; padding: 20px;}
+    .welcome-container {display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10vh; text-align: center; padding: 20px;}
     .welcome-title {font-size: 3rem; font-weight: 800; background: linear-gradient(45deg, #00D2FF, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;}
-    .welcome-subtitle {font-size: 1.1rem; color: #64748B; max-width: 500px;}
     
-    /* WhatsApp/ChatGPT Minimalist Message Layouts */
     .chat-bubble-user {
         background-color: #1E293B; 
         color: #F8FAFC; 
@@ -39,7 +34,6 @@ st.markdown("""
         font-size: 1rem;
     }
     
-    /* Edit Button Styling (Right-aligned under user bubble) */
     .edit-btn-container {
         float: right;
         clear: both;
@@ -48,7 +42,6 @@ st.markdown("""
         margin-right: 10px;
     }
     
-    /* AI Model Bubble - Transparent with Green Avatar Accent */
     .chat-bubble-model {
         background-color: transparent; 
         color: #E2E8F0; 
@@ -61,20 +54,10 @@ st.markdown("""
         line-height: 1.6;
     }
     
-    /* Green AI Avatar Customization */
-    .ai-avatar {
-        color: #10B981; /* Premium Emerald Green */
-        font-weight: 800;
-        margin-right: 8px;
-        font-size: 1.2rem;
-    }
-    
+    .ai-avatar {color: #10B981; font-weight: 800; margin-right: 8px; font-size: 1.2rem;}
     .chat-container {width: 100%; overflow: auto;}
-    
-    /* Custom Code Styling */
     code {background-color: #1E293B !important; color: #00D2FF !important; padding: 3px 6px !important; border-radius: 4px !important; font-family: monospace;}
     
-    /* Pinned Bottom Input Container Style */
     div[data-testid="stForm"] {
         border: 1px solid #334155 !important;
         background-color: #151F32 !important;
@@ -82,10 +65,15 @@ st.markdown("""
         padding: 8px 16px !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
+    
+    /* Starter Prompts Button Styling */
+    .stButton>button {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Session Synchronization Checks
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "input_buffer" not in st.session_state:
@@ -144,55 +132,67 @@ with st.sidebar:
     st.markdown("#### ⚙️ Orchestration Core")
     app_mode = st.selectbox("Operational Framework Mode", ["💬 Standard Chat", "📄 Ask Documents", "🎨 Generate Image"], label_visibility="collapsed")
     
-    # PREMIUM HYPERPARAMETER RENAMING
     with st.expander("🧠 Advanced Model Control"):
         persona = st.selectbox("AI Expert Profile", ["Helpful Assistant", "Expert Programmer", "Creative Writer", "Harsh Code Reviewer", "Sarcastic Robot"])
-        temp = st.slider("💡 Creativity Balance (Temperature)", min_value=0.0, max_value=1.0, value=0.7, step=0.1, help="Low = Analytical & Precise. High = Creative & Varied.")
-        top_k = st.slider("🎯 Vocabulary Focus (Top-K)", min_value=1, max_value=100, value=40, step=1, help="Limits the AI to only choose from the top X most likely words.")
+        temp = st.slider("💡 Creativity Balance (Temperature)", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
+        top_k = st.slider("🎯 Vocabulary Focus (Top-K)", min_value=1, max_value=100, value=40, step=1)
 
 # ----------------------------------------------------
-# 3. CONVERSATIONAL STREAM CANVAS
+# 3. CONVERSATIONAL STREAM CANVAS & STARTER PROMPTS
 # ----------------------------------------------------
 if not history:
+    # Landing Page with Starter Cards
     st.markdown("""
         <div class="welcome-container">
             <div class="welcome-title">How can I assist your workflow today?</div>
-            <div class="welcome-subtitle">Seamlessly switch operational configuration modes in the active sidebar to parse files or stream generative answers.</div>
         </div>
     """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Grid for Starter Prompts
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🧠 Explain Convolutional Neural Networks for audio processing", use_container_width=True):
+            st.session_state.input_buffer = "Explain how a Convolutional Neural Network (CNN) can be applied to audio feature extraction for Keyword Spotting."
+            st.rerun()
+        if st.button("✉️ Draft a professional email regarding an AI project", use_container_width=True):
+            st.session_state.input_buffer = "Draft a professional, concise email to Madam requesting a review of my recent AI development project."
+            st.rerun()
+            
+    with col2:
+        if st.button("🏏 Analyze Abhishek Sharma's recent IPL performance", use_container_width=True):
+            st.session_state.input_buffer = "Provide a statistical analysis of Abhishek Sharma's recent batting performance and strike rate in the IPL for Sunrisers Hyderabad."
+            st.rerun()
+        if st.button("🚀 Explore upcoming trends in Artificial Intelligence", use_container_width=True):
+            st.session_state.input_buffer = "What are the most significant emerging trends in Artificial Intelligence and Data Science that engineering students should focus on?"
+            st.rerun()
+            
 else:
     for index, msg in enumerate(history):
         st.markdown('<div class="chat-container">', unsafe_allow_html=True)
         if msg.role == "user":
-            # User Bubble
             st.markdown(f'<div class="chat-bubble-user">{msg.content}</div>', unsafe_allow_html=True)
-            
-            # Repositioned Minimal Edit Feature (Right aligned under bubble)
             st.markdown('<div class="edit-btn-container">', unsafe_allow_html=True)
             if st.button(f"✏️ Revise Prompt", key=f"edit_trigger_{index}", type="secondary", help="Pull this text down into the input box to edit and resubmit."):
                 clean_prompt = msg.content.split("\n\n*(Attached Asset:")[0]
                 st.session_state.input_buffer = clean_prompt
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True) # Close main container
+            st.markdown('</div></div>', unsafe_allow_html=True) 
         else:
-            # AI Bubble with Green Styling applied to the Avatar Text
-            st.markdown(f'<div class="chat-bubble-model"><span class="ai-avatar">✨ AURA:</span><br>{msg.content}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-bubble-model"><span class="ai-avatar">✨ AURA:</span><br>{msg.content}</div></div>', unsafe_allow_html=True)
             if msg.mode_used == "Ask Documents":
                 st.caption("🔍 *Grounded directly via RAG Matrix Vector Subsystem*")
 
-# Spacer to ensure the input bar doesn't overlap the last message
 st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 4. FIXED ACTION FOOTER FORM (Floating Bar)
+# 4. FIXED ACTION FOOTER FORM
 # ----------------------------------------------------
 with st.form(key="input_form", clear_on_submit=True):
     col_plus, col_text, col_sub = st.columns([0.8, 7.4, 1.3])
     
     with col_plus:
-        # The ➕ popover for hidden attachments
         plus_menu = st.popover("➕", use_container_width=True)
         with plus_menu:
             st.markdown("<p style='font-size:0.85rem; font-weight:bold; margin-bottom:2px;'>Asset Pipeline Attachments</p>", unsafe_allow_html=True)
@@ -200,7 +200,6 @@ with st.form(key="input_form", clear_on_submit=True):
             uploaded_file = st.file_uploader("Upload Target File", label_visibility="collapsed")
             
     with col_text:
-        # Expanding Text Area linked to the Session Buffer
         user_query = st.text_area(
             "Prompt Input Box",
             value=st.session_state.input_buffer,
@@ -216,7 +215,7 @@ with st.form(key="input_form", clear_on_submit=True):
 # 5. EXECUTION MATRIX PIPELINE
 # ----------------------------------------------------
 if submit_action and user_query:
-    st.session_state.input_buffer = "" # Clear editing buffer
+    st.session_state.input_buffer = "" 
     
     save_text_representation = user_query + (f"\n\n*(Attached Asset: {uploaded_file.name})*" if (upload_choice != "Text Prompt Only" and uploaded_file) else "")
     db.save_chat_turn(st.session_state.session_id, "user", save_text_representation, app_mode)
