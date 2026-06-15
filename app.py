@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # NEW: Added for JavaScript injection
 import uuid
 from datetime import datetime
 import database as db
@@ -141,16 +142,13 @@ with st.sidebar:
 # 3. CONVERSATIONAL STREAM CANVAS & STARTER PROMPTS
 # ----------------------------------------------------
 if not history:
-    # Landing Page with Starter Cards
     st.markdown("""
         <div class="welcome-container">
             <div class="welcome-title">How can I assist your workflow today?</div>
         </div>
     """, unsafe_allow_html=True)
-    
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Grid for Starter Prompts
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🧠 Explain Convolutional Neural Networks for audio processing", use_container_width=True):
@@ -247,3 +245,50 @@ if submit_action and user_query:
             
         db.save_chat_turn(st.session_state.session_id, "model", final_reply, app_mode)
         st.rerun()
+
+# ----------------------------------------------------
+# 6. INVISIBLE JAVASCRIPT ENGINE (Enter = Send / Ctrl+Enter = New Line)
+# ----------------------------------------------------
+components.html(
+    """
+    <script>
+    const doc = window.parent.document;
+    function attachEnterListener() {
+        const textareas = doc.querySelectorAll('textarea');
+        textareas.forEach(ta => {
+            // Target our specific chat input box
+            if (ta.getAttribute('aria-label') === 'Prompt Input Box' && !ta.dataset.enterListenerAttached) {
+                ta.dataset.enterListenerAttached = 'true';
+                
+                // We use the capture phase (true) to intercept the keypress BEFORE Streamlit does
+                ta.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                            // NORMAL ENTER: Stop new line, stop Streamlit, and click Send
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            
+                            const buttons = doc.querySelectorAll('button');
+                            const sendBtn = Array.from(buttons).find(btn => btn.innerText.includes('Send ✨'));
+                            if (sendBtn && !sendBtn.disabled) {
+                                sendBtn.click();
+                            }
+                        } else {
+                            // CTRL+ENTER or SHIFT+ENTER: Stop Streamlit from submitting, allow natural new line
+                            e.stopPropagation(); 
+                        }
+                    }
+                }, true); 
+            }
+        });
+    }
+    
+    // Run script immediately and set up an observer in case Streamlit redraws the page
+    attachEnterListener();
+    const observer = new MutationObserver(attachEnterListener);
+    observer.observe(doc.body, { childList: true, subtree: true });
+    </script>
+    """,
+    height=0,
+    width=0,
+)
