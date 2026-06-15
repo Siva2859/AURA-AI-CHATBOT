@@ -101,6 +101,14 @@ st.markdown("""
         border-radius: 12px;
         transition: all 0.3s ease;
     }
+    
+    /* Hide the default Streamlit "Press Ctrl+Enter" hint */
+    div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+    .stTextArea small {
+        display: none !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -217,7 +225,6 @@ st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
 # 4. FIXED ACTION FOOTER FORM
 # ----------------------------------------------------
 with st.form(key="input_form", clear_on_submit=True):
-    # Adjusted ratios to make the outer buttons small and circular
     col_plus, col_text, col_sub = st.columns([0.6, 8, 0.6])
     
     with col_plus:
@@ -237,7 +244,6 @@ with st.form(key="input_form", clear_on_submit=True):
         )
         
     with col_sub:
-        # Changed text to an arrow symbol
         submit_action = st.form_submit_button("⬆️", use_container_width=True)
 
 # ----------------------------------------------------
@@ -297,7 +303,6 @@ components.html(
                             e.stopPropagation(); 
                             
                             const buttons = doc.querySelectorAll('button');
-                            // Now looking for the arrow symbol instead of 'Send'
                             const sendBtn = Array.from(buttons).find(btn => btn.innerText.includes('⬆️'));
                             if (sendBtn && !sendBtn.disabled) {
                                 sendBtn.click();
