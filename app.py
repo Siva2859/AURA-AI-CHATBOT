@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components 
 import uuid
+import random
 from datetime import datetime
 import database as db
 from ai_agent import generate_response
@@ -21,6 +22,7 @@ st.markdown("""
     
     .welcome-container {display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10vh; text-align: center; padding: 20px;}
     .welcome-title {font-size: 3rem; font-weight: 800; background: linear-gradient(45deg, #00D2FF, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px;}
+    .welcome-subtitle {font-size: 1.1rem; color: #64748B; max-width: 500px; margin-bottom: 30px;}
     
     .chat-bubble-user {
         background-color: #1E293B; 
@@ -59,7 +61,6 @@ st.markdown("""
     .chat-container {width: 100%; overflow: auto;}
     code {background-color: #1E293B !important; color: #00D2FF !important; padding: 3px 6px !important; border-radius: 4px !important; font-family: monospace;}
     
-    /* Pinned Bottom Input Container Style */
     div[data-testid="stForm"] {
         border: 1px solid #334155 !important;
         background-color: #151F32 !important;
@@ -68,7 +69,6 @@ st.markdown("""
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
     
-    /* Make the Submit Arrow Button Circular like Gemini */
     div[data-testid="stFormSubmitButton"] > button {
         border-radius: 50% !important;
         width: 44px !important;
@@ -85,7 +85,6 @@ st.markdown("""
         color: white !important;
     }
 
-    /* Make the Plus Button Circular to match */
     div[data-testid="stPopover"] > button {
         border-radius: 50% !important;
         width: 44px !important;
@@ -96,31 +95,45 @@ st.markdown("""
         margin-top: 5px;
     }
     
-    /* Starter Prompts Button Styling */
     .stButton>button {
         border-radius: 12px;
         transition: all 0.3s ease;
     }
     
-    /* Hide the default Streamlit "Press Ctrl+Enter" hint */
-    div[data-testid="InputInstructions"] {
-        display: none !important;
-    }
-    .stTextArea small {
-        display: none !important;
-    }
+    div[data-testid="InputInstructions"] {display: none !important;}
+    .stTextArea small {display: none !important;}
     </style>
 """, unsafe_allow_html=True)
 
+# ----------------------------------------------------
+# 2. SESSION & DYNAMIC DATA INITIALIZATION
+# ----------------------------------------------------
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 if "input_buffer" not in st.session_state:
     st.session_state.input_buffer = ""
 
+# Master list of diverse starter prompts
+MASTER_PROMPTS = [
+    ("🧠 Explain CNNs for audio processing", "Explain how a Convolutional Neural Network (CNN) can be applied to audio feature extraction for Keyword Spotting."),
+    ("✉️ Draft an email to Madam", "Draft a professional, concise email to Madam requesting a review of my recent AI development project."),
+    ("🏏 Analyze Abhishek Sharma's stats", "Provide a statistical analysis of Abhishek Sharma's recent batting performance and strike rate in the IPL for Sunrisers Hyderabad."),
+    ("🚀 Explore Data Science trends", "What are the most significant emerging trends in Artificial Intelligence and Data Science that engineering students should focus on?"),
+    ("🎮 Optimize mobile gaming", "What are the best RAM optimization techniques to prevent frame drops in mobile battle royale games on a 6GB device?"),
+    ("💻 Debug Python code", "How do I fix common session state errors when building a chatbot interface in Streamlit?"),
+    ("📊 Explain RAG architecture", "Explain the concept of Retrieval-Augmented Generation (RAG) and how vector databases like ChromaDB improve LLM responses."),
+    ("🗣️ NLP Preprocessing", "What is the difference between stemming and lemmatization in Natural Language Processing?")
+]
+
+# Randomly select 4 prompts for the current session ONLY once when a new chat starts
+if "current_prompt_session" not in st.session_state or st.session_state.current_prompt_session != st.session_state.session_id:
+    st.session_state.active_prompts = random.sample(MASTER_PROMPTS, 4)
+    st.session_state.current_prompt_session = st.session_state.session_id
+
 history = db.get_chat_history(st.session_state.session_id)
 
 # ----------------------------------------------------
-# 2. SIDEBAR WORKSPACE MANAGER
+# 3. SIDEBAR WORKSPACE MANAGER
 # ----------------------------------------------------
 with st.sidebar:
     st.markdown("<h2 style='text-align: center; color: #00D2FF; font-weight:800; letter-spacing:-1px;'>AURA SYSTEM</h2>", unsafe_allow_html=True)
@@ -167,8 +180,9 @@ with st.sidebar:
                             st.rerun()
 
     st.markdown("---")
-    st.markdown("#### ⚙️ Orchestration Core")
-    app_mode = st.selectbox("Operational Framework Mode", ["💬 Standard Chat", "📄 Ask Documents", "🎨 Generate Image"], label_visibility="collapsed")
+    # UPDATED: Renamed from "Orchestration Core" to "Workspace Modes"
+    st.markdown("#### ⚙️ Workspace Modes")
+    app_mode = st.selectbox("Operation Mode", ["💬 Standard Chat", "📄 Ask Documents", "🎨 Generate Image"], label_visibility="collapsed")
     
     with st.expander("🧠 Advanced Model Control"):
         persona = st.selectbox("AI Expert Profile", ["Helpful Assistant", "Expert Programmer", "Creative Writer", "Harsh Code Reviewer", "Sarcastic Robot"])
@@ -176,31 +190,43 @@ with st.sidebar:
         top_k = st.slider("🎯 Vocabulary Focus (Top-K)", min_value=1, max_value=100, value=40, step=1)
 
 # ----------------------------------------------------
-# 3. CONVERSATIONAL STREAM CANVAS & STARTER PROMPTS
+# 4. CONVERSATIONAL STREAM CANVAS & STARTER PROMPTS
 # ----------------------------------------------------
 if not history:
-    st.markdown("""
+    # Time-Aware Greeting Logic
+    current_hour = datetime.now().hour
+    if current_hour < 12:
+        greeting = "Good morning"
+    elif 12 <= current_hour < 18:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+
+    st.markdown(f"""
         <div class="welcome-container">
-            <div class="welcome-title">How can I assist your workflow today?</div>
+            <div class="welcome-title">{greeting}, let's get to work.</div>
+            <div class="welcome-subtitle">Select a starting point below, or type a custom prompt to begin setting up your workspace.</div>
         </div>
     """, unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
     
+    # Dynamic grid for Starter Prompts
     col1, col2 = st.columns(2)
+    prompts = st.session_state.active_prompts
+    
     with col1:
-        if st.button("🧠 Explain Convolutional Neural Networks for audio processing", use_container_width=True):
-            st.session_state.input_buffer = "Explain how a Convolutional Neural Network (CNN) can be applied to audio feature extraction for Keyword Spotting."
+        if st.button(prompts[0][0], use_container_width=True):
+            st.session_state.input_buffer = prompts[0][1]
             st.rerun()
-        if st.button("✉️ Draft a professional email regarding an AI project", use_container_width=True):
-            st.session_state.input_buffer = "Draft a professional, concise email to Madam requesting a review of my recent AI development project."
+        if st.button(prompts[1][0], use_container_width=True):
+            st.session_state.input_buffer = prompts[1][1]
             st.rerun()
             
     with col2:
-        if st.button("🏏 Analyze Abhishek Sharma's recent IPL performance", use_container_width=True):
-            st.session_state.input_buffer = "Provide a statistical analysis of Abhishek Sharma's recent batting performance and strike rate in the IPL for Sunrisers Hyderabad."
+        if st.button(prompts[2][0], use_container_width=True):
+            st.session_state.input_buffer = prompts[2][1]
             st.rerun()
-        if st.button("🚀 Explore upcoming trends in Artificial Intelligence", use_container_width=True):
-            st.session_state.input_buffer = "What are the most significant emerging trends in Artificial Intelligence and Data Science that engineering students should focus on?"
+        if st.button(prompts[3][0], use_container_width=True):
+            st.session_state.input_buffer = prompts[3][1]
             st.rerun()
             
 else:
@@ -222,7 +248,7 @@ else:
 st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 4. FIXED ACTION FOOTER FORM
+# 5. FIXED ACTION FOOTER FORM
 # ----------------------------------------------------
 with st.form(key="input_form", clear_on_submit=True):
     col_plus, col_text, col_sub = st.columns([0.6, 8, 0.6])
@@ -247,7 +273,7 @@ with st.form(key="input_form", clear_on_submit=True):
         submit_action = st.form_submit_button("⬆️", use_container_width=True)
 
 # ----------------------------------------------------
-# 5. EXECUTION MATRIX PIPELINE
+# 6. EXECUTION MATRIX PIPELINE
 # ----------------------------------------------------
 if submit_action and user_query:
     st.session_state.input_buffer = "" 
@@ -284,7 +310,7 @@ if submit_action and user_query:
         st.rerun()
 
 # ----------------------------------------------------
-# 6. INVISIBLE JAVASCRIPT ENGINE (Enter = Send / Ctrl+Enter = New Line)
+# 7. INVISIBLE JAVASCRIPT ENGINE (Enter = Send / Ctrl+Enter = New Line)
 # ----------------------------------------------------
 components.html(
     """
