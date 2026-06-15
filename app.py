@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components  # NEW: Added for JavaScript injection
+import streamlit.components.v1 as components 
 import uuid
 from datetime import datetime
 import database as db
@@ -59,12 +59,41 @@ st.markdown("""
     .chat-container {width: 100%; overflow: auto;}
     code {background-color: #1E293B !important; color: #00D2FF !important; padding: 3px 6px !important; border-radius: 4px !important; font-family: monospace;}
     
+    /* Pinned Bottom Input Container Style */
     div[data-testid="stForm"] {
         border: 1px solid #334155 !important;
         background-color: #151F32 !important;
-        border-radius: 24px !important;
+        border-radius: 28px !important;
         padding: 8px 16px !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Make the Submit Arrow Button Circular like Gemini */
+    div[data-testid="stFormSubmitButton"] > button {
+        border-radius: 50% !important;
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        background-color: #00D2FF !important;
+        color: #0B0F19 !important;
+        border: none !important;
+        font-size: 1.2rem !important;
+        margin-top: 5px;
+    }
+    div[data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #10B981 !important;
+        color: white !important;
+    }
+
+    /* Make the Plus Button Circular to match */
+    div[data-testid="stPopover"] > button {
+        border-radius: 50% !important;
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        background-color: transparent !important;
+        border: 1px solid #334155 !important;
+        margin-top: 5px;
     }
     
     /* Starter Prompts Button Styling */
@@ -188,7 +217,8 @@ st.markdown("<div style='margin-top: 100px;'></div>", unsafe_allow_html=True)
 # 4. FIXED ACTION FOOTER FORM
 # ----------------------------------------------------
 with st.form(key="input_form", clear_on_submit=True):
-    col_plus, col_text, col_sub = st.columns([0.8, 7.4, 1.3])
+    # Adjusted ratios to make the outer buttons small and circular
+    col_plus, col_text, col_sub = st.columns([0.6, 8, 0.6])
     
     with col_plus:
         plus_menu = st.popover("➕", use_container_width=True)
@@ -202,12 +232,13 @@ with st.form(key="input_form", clear_on_submit=True):
             "Prompt Input Box",
             value=st.session_state.input_buffer,
             height=50,
-            placeholder="Type your message, query parameters, or instructions...",
+            placeholder="Ask anything...",
             label_visibility="collapsed"
         )
         
     with col_sub:
-        submit_action = st.form_submit_button("Send ✨", use_container_width=True)
+        # Changed text to an arrow symbol
+        submit_action = st.form_submit_button("⬆️", use_container_width=True)
 
 # ----------------------------------------------------
 # 5. EXECUTION MATRIX PIPELINE
@@ -256,25 +287,22 @@ components.html(
     function attachEnterListener() {
         const textareas = doc.querySelectorAll('textarea');
         textareas.forEach(ta => {
-            // Target our specific chat input box
             if (ta.getAttribute('aria-label') === 'Prompt Input Box' && !ta.dataset.enterListenerAttached) {
                 ta.dataset.enterListenerAttached = 'true';
                 
-                // We use the capture phase (true) to intercept the keypress BEFORE Streamlit does
                 ta.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
                         if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-                            // NORMAL ENTER: Stop new line, stop Streamlit, and click Send
                             e.preventDefault(); 
                             e.stopPropagation(); 
                             
                             const buttons = doc.querySelectorAll('button');
-                            const sendBtn = Array.from(buttons).find(btn => btn.innerText.includes('Send ✨'));
+                            // Now looking for the arrow symbol instead of 'Send'
+                            const sendBtn = Array.from(buttons).find(btn => btn.innerText.includes('⬆️'));
                             if (sendBtn && !sendBtn.disabled) {
                                 sendBtn.click();
                             }
                         } else {
-                            // CTRL+ENTER or SHIFT+ENTER: Stop Streamlit from submitting, allow natural new line
                             e.stopPropagation(); 
                         }
                     }
@@ -283,7 +311,6 @@ components.html(
         });
     }
     
-    // Run script immediately and set up an observer in case Streamlit redraws the page
     attachEnterListener();
     const observer = new MutationObserver(attachEnterListener);
     observer.observe(doc.body, { childList: true, subtree: true });
